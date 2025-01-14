@@ -87,7 +87,7 @@ jobs:
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git checkout -b add-team-member-${{ github.event.issue.number }}
           git add src/_data/team.yaml
-          if [ "${{ env.PHOTO }}" != "[Photo URL] (optional)" ]; then
+          if [ "${{ env.PHOTO }}" != "[Photo URL] (optional)" ] && [ -n "${{ env.PHOTO }}" ]; then
             git add src/_img/${{ env.NAME }}.jpg
           fi
           git commit -m "Add new team member: ${{ env.NAME }}"
