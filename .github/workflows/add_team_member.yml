@@ -1,0 +1,102 @@
+name: Add Team Member
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  add_team_member:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Extract issue details
+        id: extract
+        run: |
+          echo "NAME=$(echo "${{ github.event.issue.body }}" | grep '**Name:**' | sed 's/**Name:** //')" >> $GITHUB_ENV
+          echo "ROLE=$(echo "${{ github.event.issue.body }}" | grep '**Role:**' | sed 's/**Role:** //')" >> $GITHUB_ENV
+          echo "LINKEDIN=$(echo "${{ github.event.issue.body }}" | grep '**LinkedIn:**' | sed 's/**LinkedIn:** //')" >> $GITHUB_ENV
+          echo "BLUESKY=$(echo "${{ github.event.issue.body }}" | grep '**Bluesky:**' | sed 's/**Bluesky:** //')" >> $GITHUB_ENV
+          echo "TWITTER=$(echo "${{ github.event.issue.body }}" | grep '**X (Twitter):**' | sed 's/**X (Twitter):** //')" >> $GITHUB_ENV
+          echo "GITHUB=$(echo "${{ github.event.issue.body }}" | grep '**GitHub:**' | sed 's/**GitHub:** //')" >> $GITHUB_ENV
+          echo "HOMEPAGE=$(echo "${{ github.event.issue.body }}" | grep '**Homepage:**' | sed 's/**Homepage:** //')" >> $GITHUB_ENV
+          echo "PHOTO=$(echo "${{ github.event.issue.body }}" | grep '**Photo:**' | sed 's/**Photo:** //')" >> $GITHUB_ENV
+
+      - name: Download photo
+        if: ${{ env.PHOTO != '[Photo URL] (optional)' }}
+        run: |
+          mkdir -p src/images
+          wget -O src/images/${{ env.NAME }}.jpg "${{ env.PHOTO }}"
+
+      - name: Update team.yaml
+        run: |
+          cd src/_data
+          if grep -q "name: ${{ env.NAME }}" team.yaml; then
+            sed -i "/name: ${{ env.NAME }}/,/^$/ {s/role:.*/role: ${{ env.ROLE }}/}" team.yaml
+            if [ "${{ env.LINKEDIN }}" != "[LinkedIn URL] (optional)" ]; then
+              sed -i "/name: ${{ env.NAME }}/,/^$/ {s|linkedin:.*|linkedin: ${{ env.LINKEDIN }}|}" team.yaml
+            fi
+            if [ "${{ env.BLUESKY }}" != "[Bluesky URL] (optional)" ]; then
+              sed -i "/name: ${{ env.NAME }}/,/^$/ {s|bluesky:.*|bluesky: ${{ env.BLUESKY }}|}" team.yaml
+            fi
+            if [ "${{ env.TWITTER }}" != "[Twitter URL] (optional)" ]; then
+              sed -i "/name: ${{ env.NAME }}/,/^$/ {s|x:.*|x: ${{ env.TWITTER }}|}" team.yaml
+            fi
+            if [ "${{ env.GITHUB }}" != "[GitHub URL] (optional)" ]; then
+              sed -i "/name: ${{ env.NAME }}/,/^$/ {s|github:.*|github: ${{ env.GITHUB }}|}" team.yaml
+            fi
+            if [ "${{ env.HOMEPAGE }}" != "[Homepage URL] (optional)" ]; then
+              sed -i "/name: ${{ env.NAME }}/,/^$/ {s|homepage:.*|homepage: ${{ env.HOMEPAGE }}|}" team.yaml
+            fi
+            if [ "${{ env.PHOTO }}" != "[Photo URL] (optional)" ]; then
+              sed -i "/name: ${{ env.NAME }}/,/^$/ {s|photo:.*|photo: /images/${{ env.NAME }}.jpg|}" team.yaml
+            fi
+          else
+            echo "- name: ${{ env.NAME }}" >> team.yaml
+            echo "  role: ${{ env.ROLE }}" >> team.yaml
+            if [ "${{ env.LINKEDIN }}" != "[LinkedIn URL] (optional)" ]; then
+              echo "  linkedin: ${{ env.LINKEDIN }}" >> team.yaml
+            fi
+            if [ "${{ env.BLUESKY }}" != "[Bluesky URL] (optional)" ]; then
+              echo "  bluesky: ${{ env.BLUESKY }}" >> team.yaml
+            fi
+            if [ "${{ env.TWITTER }}" != "[Twitter URL] (optional)" ]; then
+              echo "  x: ${{ env.TWITTER }}" >> team.yaml
+            fi
+            if [ "${{ env.GITHUB }}" != "[GitHub URL] (optional)" ]; then
+              echo "  github: ${{ env.GITHUB }}" >> team.yaml
+            fi
+            if [ "${{ env.HOMEPAGE }}" != "[Homepage URL] (optional)" ]; then
+              echo "  homepage: ${{ env.HOMEPAGE }}" >> team.yaml
+            fi
+            if [ "${{ env.PHOTO }}" != "[Photo URL] (optional)" ]; then
+              echo "  photo: /images/${{ env.NAME }}.jpg" >> team.yaml
+            fi
+          fi
+
+      - name: Commit changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git checkout -b add-team-member-${{ github.event.issue.number }}
+          git add src/_data/team.yaml
+          if [ "${{ env.PHOTO }}" != "[Photo URL] (optional)" ]; then
+            git add src/images/${{ env.NAME }}.jpg
+          fi
+          git commit -m "Add new team member: ${{ env.NAME }}"
+          git push origin add-team-member-${{ github.event.issue.number }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          title: "Add new team member: ${{ env.NAME }}"
+          body: "This PR adds a new team member: ${{ env.NAME }}"
+          head: add-team-member-${{ github.event.issue.number }}
+          base: main
