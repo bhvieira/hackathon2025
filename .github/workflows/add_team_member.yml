@@ -30,7 +30,7 @@ jobs:
           echo "PHOTO=$(echo "${{ github.event.issue.body }}" | grep '**Photo:**' | sed 's/**Photo:** //')" >> $GITHUB_ENV
 
       - name: Download photo
-        if: ${{ env.PHOTO != '[Photo URL] (optional)' }}
+        if: ${{ env.PHOTO && env.PHOTO != '[Photo URL] (optional)' }}
         run: |
           mkdir -p src/images
           wget -O src/images/${{ env.NAME }}.jpg "${{ env.PHOTO }}"
